@@ -21,7 +21,7 @@ from services.retrieval import retrieve_section_context
 
 console = Console()
 
-LATEX_PREAMBLE_EN = r"""\documentclass[13pt,a4paper]{extarticle}
+LATEX_PREAMBLE_EN = r"""\documentclass[14pt,a4paper]{extarticle}
 
 %% Page geometry
 \usepackage[top=1in,bottom=1in,left=1.25in,right=1.25in,headheight=14pt]{geometry}
@@ -82,7 +82,7 @@ LATEX_PREAMBLE_EN = r"""\documentclass[13pt,a4paper]{extarticle}
 }
 """
 
-LATEX_PREAMBLE_EN_MODERN = r"""\documentclass[13pt,a4paper]{extarticle}
+LATEX_PREAMBLE_EN_MODERN = r"""\documentclass[14pt,a4paper]{extarticle}
 
 %% Page geometry
 \usepackage[top=1in,bottom=1in,left=1in,right=1in,headheight=14pt]{geometry}
@@ -138,7 +138,7 @@ LATEX_PREAMBLE_EN_MODERN = r"""\documentclass[13pt,a4paper]{extarticle}
 }
 """
 
-LATEX_PREAMBLE_EN_MINIMAL = r"""\documentclass[13pt,a4paper]{extarticle}
+LATEX_PREAMBLE_EN_MINIMAL = r"""\documentclass[14pt,a4paper]{extarticle}
 
 %% Page geometry
 \usepackage[top=1.2in,bottom=1.2in,left=1.5in,right=1.5in,headheight=14pt]{geometry}
@@ -175,7 +175,7 @@ LATEX_PREAMBLE_EN_MINIMAL = r"""\documentclass[13pt,a4paper]{extarticle}
 \pagestyle{plain}
 """
 
-LATEX_PREAMBLE_ZH = r"""\documentclass[17pt,a4paper]{ctexart}
+LATEX_PREAMBLE_ZH = r"""\documentclass[18pt,a4paper]{ctexart}
 
 %% Page geometry
 \usepackage[top=1in,bottom=1in,left=1.25in,right=1.25in,headheight=14pt]{geometry}
@@ -230,7 +230,7 @@ LATEX_PREAMBLE_ZH = r"""\documentclass[17pt,a4paper]{ctexart}
 }
 """
 
-LATEX_PREAMBLE_ZH_MODERN = r"""\documentclass[17pt,a4paper]{ctexart}
+LATEX_PREAMBLE_ZH_MODERN = r"""\documentclass[18pt,a4paper]{ctexart}
 
 %% Page geometry
 \usepackage[top=1in,bottom=1in,left=1in,right=1in,headheight=14pt]{geometry}
@@ -271,7 +271,7 @@ LATEX_PREAMBLE_ZH_MODERN = r"""\documentclass[17pt,a4paper]{ctexart}
 }
 """
 
-LATEX_PREAMBLE_ZH_MINIMAL = r"""\documentclass[17pt,a4paper]{ctexart}
+LATEX_PREAMBLE_ZH_MINIMAL = r"""\documentclass[18pt,a4paper]{ctexart}
 
 %% Page geometry
 \usepackage[top=1.2in,bottom=1.2in,left=1.5in,right=1.5in,headheight=14pt]{geometry}
@@ -310,20 +310,46 @@ def _get_default_preamble(language: str) -> str:
 _TEMPLATE_FAMILIES = {
     "en": {
         "classic": LATEX_PREAMBLE_EN,
-        "modern": LATEX_PREAMBLE_EN_MODERN,
-        "minimal": LATEX_PREAMBLE_EN_MINIMAL,
+        "bookish": LATEX_PREAMBLE_EN_MINIMAL,
+        "archival": LATEX_PREAMBLE_EN_MODERN,
     },
     "zh": {
         "classic": LATEX_PREAMBLE_ZH,
-        "modern": LATEX_PREAMBLE_ZH_MODERN,
-        "minimal": LATEX_PREAMBLE_ZH_MINIMAL,
+        "bookish": LATEX_PREAMBLE_ZH_MINIMAL,
+        "archival": LATEX_PREAMBLE_ZH_MODERN,
     },
 }
 
 _TEMPLATE_BASE_PARAMS = {
-    "classic": {"top": 1.00, "bottom": 1.00, "left": 1.25, "right": 1.25, "line_stretch": 1.80, "headrule": 0.40},
-    "modern": {"top": 1.00, "bottom": 1.00, "left": 1.00, "right": 1.00, "line_stretch": 1.80, "headrule": 0.00},
-    "minimal": {"top": 1.20, "bottom": 1.20, "left": 1.50, "right": 1.50, "line_stretch": 1.80, "headrule": 0.00},
+    "en": {
+        "classic": {"top": 1.00, "bottom": 1.00, "left": 1.25, "right": 1.25, "line_stretch": 1.32, "headrule": 0.40},
+        "bookish": {"top": 1.18, "bottom": 1.18, "left": 1.42, "right": 1.42, "line_stretch": 1.36, "headrule": 0.00},
+        "archival": {"top": 1.00, "bottom": 1.00, "left": 1.02, "right": 1.02, "line_stretch": 1.28, "headrule": 0.00},
+    },
+    "zh": {
+        "classic": {"top": 1.00, "bottom": 1.00, "left": 1.25, "right": 1.25, "line_stretch": 1.80, "headrule": 0.40},
+        "bookish": {"top": 1.18, "bottom": 1.18, "left": 1.42, "right": 1.42, "line_stretch": 1.86, "headrule": 0.00},
+        "archival": {"top": 1.00, "bottom": 1.00, "left": 1.02, "right": 1.02, "line_stretch": 1.72, "headrule": 0.00},
+    },
+}
+
+_TEMPLATE_FAMILY_ALIASES = {
+    "modern": "archival",
+    "minimal": "bookish",
+    "compact": "archival",
+}
+
+_SPACING_PRESETS = {
+    "en": {
+        "compact": 1.22,
+        "standard": 1.32,
+        "relaxed": 1.45,
+    },
+    "zh": {
+        "compact": 1.62,
+        "standard": 1.78,
+        "relaxed": 1.90,
+    },
 }
 
 
@@ -331,10 +357,18 @@ def _clamp(value: float, lower: float, upper: float) -> float:
     return max(lower, min(upper, value))
 
 
+def _normalize_template_family(language: str, family: str | None) -> str:
+    normalized = _TEMPLATE_FAMILY_ALIASES.get(family or "", family or "classic")
+    if normalized not in _TEMPLATE_FAMILIES[language]:
+        return "classic"
+    return normalized
+
+
 def sample_template_profile(language: str, rng: random.Random | None = None) -> dict:
     rng = rng or random
     family = rng.choice(list(_TEMPLATE_FAMILIES[language].keys()))
-    base = _TEMPLATE_BASE_PARAMS[family]
+    base = _TEMPLATE_BASE_PARAMS[language][family]
+    spacing_limits = (1.18, 1.50) if language == "en" else (1.58, 1.92)
 
     overall_margin_shift = rng.uniform(-0.04, 0.04)
     vertical_skew = rng.uniform(-0.03, 0.03)
@@ -348,15 +382,88 @@ def sample_template_profile(language: str, rng: random.Random | None = None) -> 
         "bottom_margin_in": round(_clamp(base["bottom"] + overall_margin_shift - vertical_skew, 0.90, 1.60), 2),
         "left_margin_in": round(_clamp(base["left"] + overall_margin_shift + horizontal_skew, 0.90, 1.80), 2),
         "right_margin_in": round(_clamp(base["right"] + overall_margin_shift - horizontal_skew, 0.90, 1.80), 2),
-        "line_stretch": round(_clamp(base["line_stretch"] + rng.uniform(-0.04, 0.04), 1.72, 1.88), 2),
+        "line_stretch": round(_clamp(base["line_stretch"] + rng.uniform(-0.04, 0.04), spacing_limits[0], spacing_limits[1]), 2),
         "headrule_width_pt": round(_clamp(base["headrule"] + rng.uniform(-0.04, 0.04), 0.00, 0.45), 2),
+        "font_scheme": "auto",
+        "spacing_mode": "auto",
     }
+
+
+def build_template_profile(
+    language: str,
+    *,
+    layout_mode: str = "auto",
+    style: str = "auto",
+    font_scheme: str = "auto",
+    spacing_mode: str = "auto",
+    rng: random.Random | None = None,
+) -> dict:
+    rng = rng or random
+
+    if layout_mode == "random":
+        profile = sample_template_profile(language, rng=rng)
+        profile["font_scheme"] = font_scheme
+        profile["spacing_mode"] = spacing_mode
+        return profile
+
+    family = _normalize_template_family(language, style)
+    base = _TEMPLATE_BASE_PARAMS[language][family]
+    profile = {
+        "version": 1,
+        "language": language,
+        "family": family,
+        "top_margin_in": round(base["top"], 2),
+        "bottom_margin_in": round(base["bottom"], 2),
+        "left_margin_in": round(base["left"], 2),
+        "right_margin_in": round(base["right"], 2),
+        "line_stretch": round(base["line_stretch"], 2),
+        "headrule_width_pt": round(base["headrule"], 2),
+        "font_scheme": font_scheme,
+        "spacing_mode": spacing_mode,
+    }
+
+    if layout_mode == "manual":
+        if spacing_mode in _SPACING_PRESETS[language]:
+            profile["line_stretch"] = _SPACING_PRESETS[language][spacing_mode]
+        profile["top_margin_in"] = round(_clamp(base["top"] + rng.uniform(-0.02, 0.02), 0.90, 1.60), 2)
+        profile["bottom_margin_in"] = round(_clamp(base["bottom"] + rng.uniform(-0.02, 0.02), 0.90, 1.60), 2)
+        profile["left_margin_in"] = round(_clamp(base["left"] + rng.uniform(-0.03, 0.03), 0.90, 1.80), 2)
+        profile["right_margin_in"] = round(_clamp(base["right"] + rng.uniform(-0.03, 0.03), 0.90, 1.80), 2)
+
+    return profile
+
+
+def _apply_font_scheme(preamble: str, language: str, font_scheme: str) -> str:
+    if language != "en" or font_scheme == "auto":
+        return preamble
+
+    preamble = re.sub(r"^\\usepackage\{times\}\n?", "", preamble, flags=re.MULTILINE)
+    preamble = re.sub(r"^\\usepackage\{mathpazo\}\n?", "", preamble, flags=re.MULTILINE)
+
+    package_line = ""
+    if font_scheme == "times":
+        package_line = "\\usepackage{times}\n"
+    elif font_scheme == "palatino":
+        package_line = "\\usepackage{mathpazo}\n"
+    elif font_scheme == "default":
+        package_line = ""
+
+    if not package_line:
+        return preamble
+
+    return re.sub(
+        r"(\\usepackage\[utf8\]\{inputenc\}\n)",
+        r"\1" + package_line,
+        preamble,
+        count=1,
+    )
 
 
 def _render_preamble(language: str, template_profile: dict | None) -> str:
     profile = template_profile or sample_template_profile(language)
-    family = profile.get("family", "classic")
+    family = _normalize_template_family(language, profile.get("family", "classic"))
     base_preamble = _TEMPLATE_FAMILIES[language].get(family, _get_default_preamble(language))
+    base_preamble = _apply_font_scheme(base_preamble, language, profile.get("font_scheme", "auto"))
 
     geometry = (
         "\\usepackage[top="
@@ -423,6 +530,14 @@ def _get_system_prompt(language: str, depth: str) -> str:
         f"- REQUIRED: All theorems, definitions, proofs must relate to the mathematician's actual work\n"
         f"- REQUIRED: Focus on historical context and the mathematician's specific contributions\n"
         f"- REQUIRED: Use advanced mathematics appropriate to the mathematician's field"
+        f"\n\n"
+        f"WRITING STYLE REQUIREMENTS:\n"
+        f"- Write in a natural, scholarly voice that sounds human-written\n"
+        f"- FORBIDDEN: AI-like phrases such as \"It is worth noting that\", \"It should be emphasized that\", \"One might observe that\"\n"
+        f"- FORBIDDEN: Overly formal transitions like \"Furthermore\", \"Moreover\", \"In addition to the aforementioned\"\n"
+        f"- REQUIRED: Use varied sentence structures and natural academic prose\n"
+        f"- REQUIRED: Write as if you are a knowledgeable historian telling a compelling story\n"
+        f"- REQUIRED: Balance technical precision with narrative flow"
     )
 
 
@@ -757,9 +872,15 @@ Requirements:
 {expand_instruction}- Include relevant mathematical theorems, definitions, and proofs
 - Include historical context and analysis
 - Use displayed equations, aligned environments, and theorem blocks extensively
-- Every subsection should be rich with mathematical detail and historical narrative
+- Let different subsections carry different weights when appropriate; some may be broader and others more concentrated
+- The chapter does not need to feel perfectly even or mechanically complete
 - Avoid unnecessary repetition across sections
-- Keep terminology and tone consistent with the document brief{custom_block}"""
+- Keep terminology and tone consistent with the document brief
+- Write in a natural, engaging academic style — avoid AI-like phrasing
+- Vary your sentence structure and paragraph openings
+- Let the narrative flow naturally rather than following a rigid template
+- Do not make the chapter read like one installment in a perfectly uniform life-by-life checklist
+- If this chapter is more historical, analytical, or technical than others, let that difference remain visible{custom_block}"""
 
     system_prompt = _get_system_prompt(language, depth)
 
@@ -1348,7 +1469,7 @@ def generate_paper(client: OpenAI, topic: str, outline: dict, existing_context: 
             trace_callback("bibliography_ready", content_length=len(bibliography))
         progress.advance(task)
 
-    abstract_page = build_title_page(outline, language)
+    abstract_page = build_title_page(outline, language, template_profile)
     preamble = _render_preamble(language, template_profile)
     latex_content = assemble_document(
         preamble,

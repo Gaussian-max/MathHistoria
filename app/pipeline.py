@@ -21,19 +21,19 @@ def write_latex_output(latex_content: str, topic: str, language: str = "en") -> 
     return latex_path
 
 
-def compile_latex_output(latex_path: str) -> tuple[str | None, int | None]:
-    pdf_path = compile_pdf(latex_path)
-    if not pdf_path:
-        return None, None
-    return pdf_path, count_pdf_pages(pdf_path)
+def compile_latex_output(latex_path: str) -> tuple[str | None, int | None, str]:
+    outcome = compile_pdf(latex_path)
+    if not outcome.pdf_path:
+        return None, None, outcome.status
+    return outcome.pdf_path, count_pdf_pages(outcome.pdf_path), outcome.status
 
 
 def persist_and_compile_output(
     latex_content: str,
     topic: str,
     language: str = "en",
-) -> tuple[str, str | None, int | None]:
+) -> tuple[str, str | None, int | None, str]:
     """Persist LaTeX content and compile the corresponding PDF when possible."""
     latex_path = write_latex_output(latex_content, topic, language)
-    pdf_path, pages = compile_latex_output(latex_path)
-    return latex_path, pdf_path, pages
+    pdf_path, pages, compile_status = compile_latex_output(latex_path)
+    return latex_path, pdf_path, pages, compile_status

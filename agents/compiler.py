@@ -1,10 +1,17 @@
 import os
 import shutil
 import subprocess
+from dataclasses import dataclass
 
 from rich.console import Console
 
 console = Console()
+
+
+@dataclass(frozen=True)
+class CompileOutcome:
+    pdf_path: str | None
+    status: str
 
 
 def find_latex_engine() -> str | None:
@@ -15,20 +22,20 @@ def find_latex_engine() -> str | None:
     return None
 
 
-def compile_pdf(latex_file: str) -> str | None:
+def compile_pdf(latex_file: str) -> CompileOutcome:
     """
     Compile a .tex file to PDF (runs the engine twice for cross-references).
-    Returns the path to the generated PDF, or None on failure.
+    Returns a compile outcome describing whether PDF compilation succeeded.
     """
     engine = find_latex_engine()
     if not engine:
         console.print(
-            "[red]Error: No LaTeX engine found.[/red]\n"
+            "[yellow]No LaTeX engine found. Skipping PDF compilation.[/yellow]\n"
             "Please install MacTeX (macOS) or TeX Live (Linux):\n"
             "  macOS:  brew install --cask mactex\n"
             "  Linux:  sudo apt install texlive-full"
         )
-        return None
+        return CompileOutcome(pdf_path=None, status="missing_engine")
 
     latex_dir = os.path.dirname(os.path.abspath(latex_file))
     latex_filename = os.path.basename(latex_file)
@@ -65,11 +72,11 @@ def compile_pdf(latex_file: str) -> str | None:
                 for line in lines[-20:]:
                     if line.strip():
                         console.print(f"  [dim]{line}[/dim]")
-                return None
+                return CompileOutcome(pdf_path=None, status="compile_failed")
 
     if os.path.exists(pdf_path):
-        return pdf_path
-    return None
+        return CompileOutcome(pdf_path=pdf_path, status="compiled")
+    return CompileOutcome(pdf_path=None, status="compile_failed")
 
 
 def count_pdf_pages(pdf_path: str) -> int | None:

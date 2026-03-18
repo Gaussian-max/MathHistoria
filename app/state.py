@@ -19,7 +19,7 @@ def _default_preferences() -> dict:
         "api_key": api_key,
         "base_url": config.BASE_URL,
         "draft_model": config.MODEL,
-        "planning_model": "",
+        "planning_model": config.MODEL,
         "ui_language": "zh",
         "language": "en",
         "length": "standard",
@@ -27,7 +27,7 @@ def _default_preferences() -> dict:
         "focus": "balanced",
         "diversity_count": 3,
         "concurrency": 4,
-        "cache_enabled": True,
+        "cache_enabled": False,
     }
 
 
@@ -46,12 +46,18 @@ def load_preferences() -> dict:
     saved_prefs.pop("api_key", None)
     if "draft_model" not in saved_prefs and "model" in saved_prefs:
         saved_prefs["draft_model"] = saved_prefs["model"]
-    if "planning_model" not in saved_prefs:
-        saved_prefs["planning_model"] = ""
+    if not saved_prefs.get("base_url"):
+        saved_prefs["base_url"] = config.BASE_URL
+    if not saved_prefs.get("draft_model"):
+        saved_prefs["draft_model"] = config.MODEL
+    if not saved_prefs.get("planning_model"):
+        saved_prefs["planning_model"] = config.MODEL
     if "ui_language" not in saved_prefs:
         saved_prefs["ui_language"] = prefs["ui_language"]
+    saved_prefs["cache_enabled"] = False
     saved_prefs.pop("model", None)
     prefs.update(saved_prefs)
+    prefs["cache_enabled"] = False
     return prefs
 
 

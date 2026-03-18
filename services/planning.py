@@ -36,16 +36,16 @@ def _pick_variant_hint(hints: list[str], count: int) -> tuple[int, str]:
 
 
 def _make_objective(title: str, subsections: list[str], options: GenerationOptions) -> str:
-    subsection_text = ", ".join(subsections) if subsections else "the core themes of this section"
+    subsection_text = ", ".join(subsections[:3]) if subsections else "the core themes of this section"
     focus_hint = _FOCUS_HINTS.get(options.focus, _FOCUS_HINTS["balanced"])
-    return f"Develop {title} through {subsection_text}. {focus_hint}"
+    return f"Give {title} a clear role in the paper through {subsection_text}. Keep the chapter selective rather than encyclopedic. {focus_hint}"
 
 
 def _make_summary(title: str, subsections: list[str], options: GenerationOptions) -> str:
     if subsections:
         joined = ", ".join(subsections[:3])
-        return f"This section develops {title} through {joined}."
-    return f"This section develops the main themes of {title}."
+        return f"This section uses {joined} to advance the paper's treatment of {title}."
+    return f"This section advances the paper's treatment of {title}."
 
 
 def _extract_key_terms(title: str, subsections: list[str]) -> list[str]:
@@ -184,10 +184,10 @@ def build_section_briefs(outline: dict, options: GenerationOptions) -> list[Sect
                 title=title,
                 subsections=subsections,
                 objective=_make_objective(title, subsections, options),
-                must_cover=subsections.copy(),
+                must_cover=subsections[:4] if subsections else [title],
                 key_terms=_extract_key_terms(title, subsections),
                 summary=_make_summary(title, subsections, options),
-                opening_hint=f"Start by situating {title} in the broader arc of the paper.",
+                opening_hint=f"Open by clarifying why {title} matters in this particular paper, rather than sounding like a generic chapter introduction.",
             )
         )
     return briefs
@@ -273,8 +273,13 @@ END OPENING HINT
 Rules:
 - Preserve the original section order exactly
 - Do not add or remove sections
-- Make each section brief concrete and non-generic
+- Treat this as an intention card, not a rigid construction blueprint
+- Make each section brief concrete, selective, and non-generic
 - Keep must_cover and key_terms specific to the mathematician's work
+- Do not force the whole paper into a complete cradle-to-legacy life survey if a more selective organizing idea is stronger
+- Allow uneven chapter density; some sections can be broad and some narrower
+- Let summaries describe the chapter's role, not a full mini-essay
+- Keep each MUST COVER list focused; 2 to 4 strong items is better than a long exhaustive checklist
 """
 
 
@@ -514,6 +519,8 @@ def generate_single_outline_candidate(
     subsection_range: str,
     model: str | None,
     variant_count: int = 3,
+    custom_requirements: str = "",
+    suggested_title: str = "",
 ) -> tuple[dict, int, int]:
     selected_index, hint = _pick_variant_hint(_OUTLINE_VARIANT_HINTS, variant_count)
     outline = generate_outline(
@@ -526,6 +533,8 @@ def generate_single_outline_candidate(
         section_count=section_count,
         subsection_range=subsection_range,
         model=model,
+        custom_requirements=custom_requirements,
+        suggested_title=suggested_title,
     )
     return outline, selected_index, min(max(1, variant_count), len(_OUTLINE_VARIANT_HINTS))
 
@@ -538,8 +547,14 @@ def critique_outline(
     language: str,
     focus: str,
     model: str | None,
+    custom_requirements: str = "",
 ) -> str:
     model_name = model or config.MODEL
+
+    user_custom_block = ""
+    if custom_requirements:
+        user_custom_block = f"\n=== USER-PROVIDED REQUIREMENTS ===\n{custom_requirements}\n=== END USER REQUIREMENTS ===\n"
+
     try:
         return _call_text_completion(
             client,
@@ -549,14 +564,16 @@ def critique_outline(
 Topic: {topic}
 Language: {language}
 Focus: {focus}
-
+{user_custom_block}
 Outline:
 {_format_outline_text(outline)}
 
 Return plain text only.
 - If the outline is already strong, say so briefly.
 - Otherwise list concrete problems and the fix for each one.
-- Focus on coverage, ordering, redundancy, generic titles, balance, historical gaps, and mathematical gaps.
+- Focus on coverage gaps, ordering problems, redundancy, generic titles, forced symmetry, and outlines that drift into a totalized life summary instead of a paper with a clear angle.
+- Flag any titles that sound AI-generated or formulaic (e.g., "A Study of...", "An Analysis of...")
+- Check if user requirements (if provided) are properly addressed.
 """,
             model=model_name,
             max_tokens=4000,
@@ -574,8 +591,19 @@ def repair_outline(
     language: str,
     focus: str,
     model: str | None,
+    custom_requirements: str = "",
+    suggested_title: str = "",
 ) -> dict:
     model_name = model or config.MODEL
+
+    user_custom_block = ""
+    if custom_requirements:
+        user_custom_block = f"\n=== USER-PROVIDED REQUIREMENTS (MUST RESPECT) ===\n{custom_requirements}\n=== END USER REQUIREMENTS ===\n"
+
+    title_guidance = ""
+    if suggested_title:
+        title_guidance = f"\n- IMPORTANT: The user suggested the title \"{suggested_title}\". Preserve its spirit and meaning unless there's a strong reason to change it.\n"
+
     try:
         raw = _call_text_completion(
             client,
@@ -585,7 +613,7 @@ def repair_outline(
 Topic: {topic}
 Language: {language}
 Focus: {focus}
-
+{user_custom_block}
 Original outline:
 {_format_outline_text(outline)}
 
@@ -609,10 +637,15 @@ SECTION 1: ...
 - ...
 
 Rules:
-- Preserve the overall organizing idea and flavour of the selected outline
+{title_guidance}- Preserve the overall organizing idea and flavour of the selected outline
 - Apply the minimum necessary changes to fix real issues
 - Keep the outline academically specific and non-generic
-- You may rename, reorder, split, merge, add, or remove sections only when needed
+- Prefer local repairs over global rewrites
+- Do not normalize the outline into a standard cradle-to-legacy biography if the original has a sharper lens
+- Preserve useful asymmetry; do not force every section to look equally weighted
+- You may rename, reorder, split, or merge sections only when genuinely necessary
+- Keep the repaired outline within roughly plus or minus two sections of the original unless the critique identifies a serious structural failure
+- Avoid formulaic titles like "A Study of...", "An Analysis of..."
 """,
             model=model_name,
             max_tokens=6000,
@@ -696,7 +729,7 @@ Plan:
 Return plain text only.
 - If the plan is already strong, say so briefly.
 - Otherwise list concrete planning problems and fixes.
-- Focus on blurry objectives, missing coverage, term inconsistency, cross-section overlap, weak summaries, and weak openings.
+- Focus on blurry objectives, missing coverage, term inconsistency, cross-section overlap, weak summaries, weak openings, and over-normalized planning that makes every chapter feel equally weighted.
 """,
             model=model_name,
             max_tokens=5000,
@@ -765,6 +798,9 @@ Rules:
 - Apply the minimum necessary changes to resolve the critique
 - Keep section indices aligned with the outline
 - Do not add or remove sections
+- Do not turn the plan into a rigid full-life survey if the original has a sharper angle
+- Preserve uneven chapter density where it helps the paper
+- Keep must-cover lists selective rather than exhaustive
 """,
             model=model_name,
             max_tokens=7000,

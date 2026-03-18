@@ -43,7 +43,7 @@ def display_outline(outline: dict) -> None:
 
 def save_and_compile(latex_content: str, topic: str, language: str = "en") -> None:
     """Save LaTeX to file and compile to PDF."""
-    latex_path, pdf_path, pages = persist_and_compile_output(latex_content, topic, language)
+    latex_path, pdf_path, pages, compile_status = persist_and_compile_output(latex_content, topic, language)
 
     console.print(f"\n[green]✓[/green] LaTeX saved: [bold]{latex_path}[/bold]")
 
@@ -58,11 +58,17 @@ def save_and_compile(latex_content: str, topic: str, language: str = "en") -> No
             )
         )
     else:
+        message = (
+            "[yellow]No LaTeX engine detected - LaTeX source is ready:[/yellow]\n"
+            if compile_status == "missing_engine"
+            else "[yellow]PDF compilation failed - LaTeX source is ready:[/yellow]\n"
+        )
         console.print(
             Panel(
-                f"[yellow]PDF compilation failed — LaTeX source is ready:[/yellow]\n"
+                message
+                +
                 f"[bold]{latex_path}[/bold]\n\n"
-                "[dim]Compile manually:[/dim]\n"
+                "[dim]You can still download or compile the .tex file manually:[/dim]\n"
                 f"  pdflatex -output-directory {config.OUTPUT_DIR} {latex_path}\n"
                 f"  pdflatex -output-directory {config.OUTPUT_DIR} {latex_path}",
                 border_style="yellow",

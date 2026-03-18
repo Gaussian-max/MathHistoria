@@ -102,7 +102,11 @@ SECTION 1: Section Title
 SECTION 2: Section Title
 - Subsection 1
 - Subsection 2
-- Subsection 3"""
+- Subsection 3
+
+Notes:
+- The number of subsections may vary by section
+- Some sections may have 2 subsections, some 3 or 4, if that produces a more natural paper"""
 
 
 def generate_outline(
@@ -116,6 +120,8 @@ def generate_outline(
     section_count: int = 0,
     subsection_range: str = "3-5",
     model: str = None,
+    custom_requirements: str = "",
+    suggested_title: str = "",
 ) -> dict:
     import random
 
@@ -127,10 +133,10 @@ def generate_outline(
     else:
         # 英文：章节更少，每章更短
         if language == "en":
-            length_config = {"short": (7, 9), "standard": (9, 11), "long": (13, 15)}
+            length_config = {"short": (7, 9), "standard": (11, 13), "long": (13, 15)}
         else:  # zh
             length_config = {"short": (8, 10), "standard": (13, 15), "long": (15, 18)}
-        min_sec, max_sec = length_config.get(length, (9, 11) if language == "en" else (13, 15))
+        min_sec, max_sec = length_config.get(length, (11, 13) if language == "en" else (13, 15))
         sections = random.randint(min_sec, max_sec)
 
     pages_config = {"short": "20-30", "standard": "50-60", "long": "70-80"}
@@ -147,17 +153,32 @@ def generate_outline(
         f"All output must be in {output_lang}. Return plain text only, with the requested labels and no markdown fences."
     )
 
+    # 构建用户自定义内容块
+    user_custom_block = ""
+    if suggested_title or custom_requirements:
+        user_custom_block = "\n=== USER-PROVIDED GUIDANCE (MUST RESPECT) ===\n"
+        if suggested_title:
+            user_custom_block += f"Suggested title: \"{suggested_title}\"\n- Use this title if it fits and matches the target language ({output_lang})\n- Only adjust if language doesn't match or there are obvious errors\n- Preserve the user's intended meaning and style\n\n"
+        if custom_requirements:
+            user_custom_block += f"Additional requirements:\n{custom_requirements}\n"
+        user_custom_block += "=== END USER GUIDANCE ===\n"
+
     user_prompt = f"""Create a detailed outline for a {pages}-page academic paper about {topic}.
 
 This is a historical biography, not a research-methodology paper.
 
 Requirements:
-- Exactly {sections} major sections, each with {subsection_range} subsections
+- Target about {sections} major sections, and stay close to that count unless there is a strong structural reason not to
+- Let subsection counts vary by section; most sections can fall around {subsection_range}, but some may be shorter or longer if that feels more natural
 - Cover: {focus_hint}
 - All content in {output_lang}
 - Use concrete, specific section titles tied to the mathematician's actual life and work
 - Avoid generic sections like Introduction, Conclusion, Future Work, Significance, Reflection
-
+- CRITICAL: Avoid formulaic titles like "A Study of...", "An Analysis of...", "The Impact of..."
+- Use natural, engaging titles that sound human-written (e.g., "The Göttingen Years", "Breakthrough in Number Theory")
+- Do not feel obliged to narrate the mathematician's entire life evenly if a more selective angle yields a stronger paper
+- Allow some sections to be broader and some narrower; avoid a rigidly uniform chapter rhythm
+{user_custom_block}
 Candidate flavour:
 {variant_hint or "Use a balanced academic structure with only light stylistic variation."}
 
@@ -194,6 +215,8 @@ def generate_outline_from_pdf(
     section_count: int = 0,
     subsection_range: str = "3-5",
     model: str = None,
+    custom_requirements: str = "",
+    suggested_title: str = "",
 ) -> dict:
     import random
 
@@ -210,10 +233,10 @@ def generate_outline_from_pdf(
     else:
         # 英文：章节更少，每章更短
         if language == "en":
-            length_config = {"short": (7, 9), "standard": (9, 11), "long": (13, 15)}
+            length_config = {"short": (7, 9), "standard": (11, 13), "long": (13, 15)}
         else:  # zh
             length_config = {"short": (8, 10), "standard": (13, 15), "long": (15, 18)}
-        min_sec, max_sec = length_config.get(length, (9, 11) if language == "en" else (13, 15))
+        min_sec, max_sec = length_config.get(length, (11, 13) if language == "en" else (13, 15))
         sections = random.randint(min_sec, max_sec)
 
     pages_config = {"short": "20-30", "standard": "50-60", "long": "70-80"}
@@ -224,6 +247,16 @@ def generate_outline_from_pdf(
         f"You are expanding an existing paper into a fuller academic work. "
         f"All output must be in {output_lang}. Return plain text only, with the requested labels and no markdown fences."
     )
+
+    # 构建用户自定义内容块
+    user_custom_block = ""
+    if suggested_title or custom_requirements:
+        user_custom_block = "\n=== USER-PROVIDED GUIDANCE (MUST RESPECT) ===\n"
+        if suggested_title:
+            user_custom_block += f"Suggested title: \"{suggested_title}\"\n- Use this title if it fits and matches the target language ({output_lang})\n- Only adjust if language doesn't match or there are obvious errors\n- Preserve the user's intended meaning and style\n\n"
+        if custom_requirements:
+            user_custom_block += f"Additional requirements:\n{custom_requirements}\n"
+        user_custom_block += "=== END USER GUIDANCE ===\n"
 
     user_prompt = f"""An existing PDF about {mathematician} already covers: {covered}.
 
@@ -236,10 +269,12 @@ Create a complete {sections}-section outline for an expanded {pages}-page paper 
 Requirements:
 - Include the themes already present in the existing paper
 - Add the missing areas above
-- Each section should have {subsection_range} subsections
+- Let subsection counts vary by section; most sections can fall around {subsection_range}, but some may be shorter or longer if that produces a stronger structure
 - Avoid generic academic-template headings
 - Use specific, content-rich titles
-
+- Avoid formulaic titles like "A Study of...", "An Analysis of..."
+- Do not force the expansion into a perfectly even cradle-to-legacy biography if a more selective structure works better
+{user_custom_block}
 {_outline_format_instructions()}"""
 
     last_error: Exception | None = None
