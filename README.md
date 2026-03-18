@@ -122,6 +122,21 @@ OUTPUT_DIR=output
 
 ## Usage
 
+### 🖥️ Graphical Interface (Recommended for Beginners)
+
+**Windows:**
+```bash
+start_gui.bat
+```
+Double-click `start_gui.bat` or run the command above. Your browser will open automatically.
+
+**macOS / Linux:**
+```bash
+bash start_gui.sh
+```
+
+### 💻 Command Line Interface
+
 ```bash
 uv run python main.py
 ```
@@ -287,6 +302,21 @@ OUTPUT_DIR=output
 > ```
 
 ## 使用方法
+
+### 🖥️ 图形界面（推荐新手使用）
+
+**Windows 用户:**
+```bash
+start_gui.bat
+```
+双击 `start_gui.bat` 文件，浏览器会自动打开界面。
+
+**macOS / Linux 用户:**
+```bash
+bash start_gui.sh
+```
+
+### 💻 命令行界面
 
 ```bash
 uv run python main.py

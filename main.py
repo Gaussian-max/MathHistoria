@@ -10,17 +10,14 @@ from rich.table import Table
 from rich import box
 
 import config
+from app.pipeline import persist_and_compile_output
 from agents.suggester import get_suggestions
 from agents.outline import generate_outline, generate_outline_from_pdf
 from agents.generator import generate_paper
-from agents.compiler import compile_pdf, count_pdf_pages
 from agents.pdf_reader import extract_text_from_pdf, analyze_pdf
+from utils.security import validate_pdf_path  # 🔒 安全修复
 
 console = Console()
-
-
-def safe_filename(name: str) -> str:
-    return re.sub(r"[^\w\-]", "_", name).strip("_")
 
 
 def display_suggestions(suggestions: list[dict]) -> None:
@@ -44,22 +41,14 @@ def display_outline(outline: dict) -> None:
     console.print()
 
 
-def save_and_compile(latex_content: str, topic: str) -> None:
+def save_and_compile(latex_content: str, topic: str, language: str = "en") -> None:
     """Save LaTeX to file and compile to PDF."""
-    os.makedirs(config.OUTPUT_DIR, exist_ok=True)
-    safe_name = safe_filename(topic)
-    latex_path = os.path.join(config.OUTPUT_DIR, f"{safe_name}.tex")
-
-    with open(latex_path, "w", encoding="utf-8") as f:
-        f.write(latex_content)
+    latex_path, pdf_path, pages = persist_and_compile_output(latex_content, topic, language)
 
     console.print(f"\n[green]✓[/green] LaTeX saved: [bold]{latex_path}[/bold]")
 
     console.rule("[bold]Step 3 / 3 — Compiling PDF[/bold]")
-    pdf_path = compile_pdf(latex_path)
-
     if pdf_path:
-        pages = count_pdf_pages(pdf_path)
         page_info = f" ([bold]{pages} pages[/bold])" if pages else ""
         console.print(
             Panel(
@@ -79,6 +68,27 @@ def save_and_compile(latex_content: str, topic: str) -> None:
                 border_style="yellow",
             )
         )
+
+
+def collect_generated_paper(*args, **kwargs) -> str:
+    """Consume the paper generator and return the final LaTeX document."""
+    latex_content = None
+    for status, payload in generate_paper(*args, **kwargs):
+        if status == "done":
+            latex_content = payload
+
+    if latex_content is None:
+        raise RuntimeError("Paper generation finished without producing LaTeX output.")
+
+    return latex_content
+
+
+def prompt_runtime_options() -> tuple[int, bool]:
+    """Collect runtime settings for concurrency and local caching."""
+    concurrency = IntPrompt.ask("Concurrent section jobs", default=4)
+    cache_answer = Prompt.ask("Enable local section cache? (y/n)", default="y").strip().lower()
+    cache_enabled = cache_answer not in {"n", "no"}
+    return max(1, concurrency), cache_enabled
 
 
 # ── Mode A: start from scratch ────────────────────────────────────────────────
@@ -107,18 +117,29 @@ def flow_fresh(client: OpenAI) -> None:
     display_outline(outline)
 
     console.rule("[bold]Step 2 / 3 — Generating Paper Content[/bold]")
+    concurrency, cache_enabled = prompt_runtime_options()
     console.print(f"[dim]Generating {len(outline.get('sections', []))} sections + bibliography…[/dim]\n")
-    latex_content = generate_paper(client, topic, outline)
+    latex_content = collect_generated_paper(
+        client,
+        topic,
+        outline,
+        concurrency=concurrency,
+        cache_enabled=cache_enabled,
+    )
 
-    save_and_compile(latex_content, topic)
+    save_and_compile(latex_content, topic, "en")
 
 
 # ── Mode B: continue / expand from existing PDF ───────────────────────────────
 
 def flow_from_pdf(client: OpenAI) -> None:
     pdf_path = Prompt.ask("Path to your existing PDF").strip()
-    if not os.path.isfile(pdf_path):
-        console.print(f"[red]File not found:[/red] {pdf_path}")
+
+    # Validate the user-supplied PDF, but don't restrict it to a few hardcoded
+    # directories. CLI users commonly work with PDFs outside the repo/home/output.
+    is_valid, error_msg = validate_pdf_path(pdf_path)
+    if not is_valid:
+        console.print(f"[red]安全错误:[/red] {error_msg}")
         sys.exit(1)
 
     # Step 1: read + analyse
@@ -147,9 +168,17 @@ def flow_from_pdf(client: OpenAI) -> None:
     display_outline(outline)
 
     console.print(f"[dim]Generating {len(outline.get('sections', []))} sections + bibliography…[/dim]\n")
-    latex_content = generate_paper(client, mathematician, outline, existing_context=pdf_text)
+    concurrency, cache_enabled = prompt_runtime_options()
+    latex_content = collect_generated_paper(
+        client,
+        mathematician,
+        outline,
+        existing_context=pdf_text,
+        concurrency=concurrency,
+        cache_enabled=cache_enabled,
+    )
 
-    save_and_compile(latex_content, mathematician)
+    save_and_compile(latex_content, mathematician, "en")
 
 
 # ── Entry point ───────────────────────────────────────────────────────────────

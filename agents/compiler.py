@@ -39,6 +39,7 @@ def compile_pdf(latex_file: str) -> str | None:
     cmd = [
         engine,
         "-interaction=nonstopmode",
+        "-no-shell-escape",  # 🔒 安全修复：禁用 shell 命令执行
         "-output-directory", latex_dir,
         latex_filename,
     ]
@@ -50,6 +51,9 @@ def compile_pdf(latex_file: str) -> str | None:
             cwd=latex_dir,
             capture_output=True,
             text=True,
+            encoding='utf-8',
+            errors='ignore',
+            timeout=300,  # 🔒 安全修复：添加5分钟超时限制
         )
         if result.returncode != 0:
             # Check if PDF was still generated despite errors (warnings are common)
